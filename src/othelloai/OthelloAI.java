@@ -17,14 +17,14 @@ public class OthelloAI {
         
         int me;
         String move;
-        System.out.print("C Enter starting color: ");
+        System.out.println("C Enter starting color: ");
         String startingColor = keyboard.nextLine();
         if (startingColor.equals("I B")) {
             me = 1;
-            System.out.println("  R B");
+            System.out.println("R B");
         } else {
             me = -1;
-            System.out.println("  R W");
+            System.out.println("R W");
         }
         
         Board game = new Board(me);
@@ -32,13 +32,15 @@ public class OthelloAI {
         
         while(!game.isOver()) {
             if (me == 1) {
-                move = game.generateRandMove(me);
+                move = game.generateMove(me);
             } else
                 move = game.getMove(me);
             me *= -1;
             System.out.println(move);
             System.out.println(game.toString());
         }
+        
+        System.out.println("C Game is Finished");
     }
     
 }

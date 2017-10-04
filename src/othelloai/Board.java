@@ -78,21 +78,30 @@ public class Board {
     public String getMove(int me) {
         checkValidMoves(-1);
         ArrayList<Integer> moveSelected = validMoves.get(0);
-        System.out.print("C Enter move: ");
+        System.out.println("C Enter move: ");
         String moveString = keyboard.nextLine();
-        if (moveString.equals("W") || moveString.equals("B")) {
-            return moveString;
-        }
-        int bit = move.moveToBit(moveString);
-        for(int i=1;i<validMoves.size();i++) {
-            if ((Integer)validMoves.get(i).get(0) == bit) {
-                moveSelected = validMoves.get(i);
-                break;
+        boolean valid = true;
+        while(valid) {
+            if (moveString.equals("W") || moveString.equals("B")) {
+                return moveString;
             }
+            int bit = move.moveToBit(moveString);
+            int i;
+            for(i=1;i<validMoves.size();i++) {
+                if ((Integer)validMoves.get(i).get(0) == bit) {
+                    moveSelected = validMoves.get(i);
+                    break;
+                }
+            }
+            if(i==validMoves.size()) {
+                System.out.println("C Invalid Move.");
+                System.out.println("C Enter move: ");
+                moveString = keyboard.nextLine();
+            } else
+                break;
         }
         applyMove(moveSelected,-1);
-        String newMove = "              " + moveString;
-        return newMove;
+        return moveString;
     }    
     
     public String generateMove(int me) {
@@ -101,48 +110,48 @@ public class Board {
             if (color == 1) return "B";
             else return "W";
         } else {
-        ArrayList <Integer> largest = validMoves.get(0);
-        int temp = validMoves.get(0).size();
-        for(int i=1;i<validMoves.size();i++) {
-            if (temp < validMoves.get(i).size())
-                largest = validMoves.get(i);
-        }
-        applyMove(largest,1);
-        
-        String printMove = "";
-        int bit = largest.get(0);
-        if(color == 1){
-            printMove = printMove.concat("              B ");
-            printMove = printMove.concat(move.bitToMove(bit));
-            return printMove;
-        } else {
-            printMove = printMove.concat("              W ");
-            printMove = printMove.concat(move.bitToMove(bit));
-            return printMove;
-        }
+            ArrayList <Integer> largest = validMoves.get(0);
+            applyMove(largest,1);
+
+            String printMove = "";
+            int bit = largest.get(0);
+            if(color == 1){
+                printMove = printMove.concat("B ");
+                printMove = printMove.concat(move.bitToMove(bit));
+                return printMove;
+            } else {
+                printMove = printMove.concat("W ");
+                printMove = printMove.concat(move.bitToMove(bit));
+                return printMove;
+            }
         }
     }
     
-    public String generateRandMove(int me) {
+    public String generateGreedy(int me) {
         checkValidMoves(1);
         if (validMoves.isEmpty()) {
             if (color == 1) return "B";
             else return "W";
         } else {
-        ArrayList <Integer> largest = validMoves.get(0);
-        applyMove(largest,1);
-        
-        String printMove = "";
-        int bit = largest.get(0);
-        if(color == 1){
-            printMove = printMove.concat("              B ");
-            printMove = printMove.concat(move.bitToMove(bit));
-            return printMove;
-        } else {
-            printMove = printMove.concat("              W ");
-            printMove = printMove.concat(move.bitToMove(bit));
-            return printMove;
-        }
+            ArrayList <Integer> largest = validMoves.get(0);
+            int temp = validMoves.get(0).size();
+            for(int i=1;i<validMoves.size();i++) {
+                if (temp < validMoves.get(i).size())
+                    largest = validMoves.get(i);
+            }
+            applyMove(largest,1);
+
+            String printMove = "";
+            int bit = largest.get(0);
+            if(color == 1){
+                printMove = printMove.concat("B ");
+                printMove = printMove.concat(move.bitToMove(bit));
+                return printMove;
+            } else {
+                printMove = printMove.concat("W ");
+                printMove = printMove.concat(move.bitToMove(bit));
+                return printMove;
+            }
         }
     }
     
