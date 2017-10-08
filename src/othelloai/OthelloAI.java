@@ -33,13 +33,13 @@ public class OthelloAI {
         while(!game.isOver()) {
             if (me == 1) {
                 move = game.generateMove(me);
+                System.out.println(move);
             } else
                 move = game.getMove(me);
             me *= -1;
-            System.out.println(move);
+            System.out.println("C " + move);
             System.out.println(game.toString());
         }
-        
         System.out.println("C Game is Finished");
     }
     

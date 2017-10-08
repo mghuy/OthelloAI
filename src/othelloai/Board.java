@@ -81,7 +81,7 @@ public class Board {
         System.out.println("C Enter move: ");
         String moveString = keyboard.nextLine();
         boolean valid = true;
-        while(valid) {
+        //while(valid) {
             if (moveString.equals("W") || moveString.equals("B")) {
                 return moveString;
             }
@@ -93,13 +93,13 @@ public class Board {
                     break;
                 }
             }
-            if(i==validMoves.size()) {
+            /*if(i==validMoves.size()) {
                 System.out.println("C Invalid Move.");
                 System.out.println("C Enter move: ");
                 moveString = keyboard.nextLine();
             } else
-                break;
-        }
+                break;*/
+        //}
         applyMove(moveSelected,-1);
         return moveString;
     }    
@@ -116,11 +116,11 @@ public class Board {
             String printMove = "";
             int bit = largest.get(0);
             if(color == 1){
-                printMove = printMove.concat("B ");
+                printMove += ("B ");
                 printMove = printMove.concat(move.bitToMove(bit));
                 return printMove;
             } else {
-                printMove = printMove.concat("W ");
+                printMove += ("W ");
                 printMove = printMove.concat(move.bitToMove(bit));
                 return printMove;
             }
