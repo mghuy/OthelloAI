@@ -1,7 +1,6 @@
 package othelloai;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
 import java.util.Scanner;
@@ -20,11 +19,8 @@ public class Board {
     public Boolean isOver;
     public Scanner keyboard;
     public Random rand;
-    public ArrayList<ArrayList> validMoves;
-    public final ArrayList<Integer> N_EDGE = new ArrayList<>();
-    public final ArrayList<Integer> E_EDGE = new ArrayList<>();
-    public final ArrayList<Integer> S_EDGE = new ArrayList<>();
-    public final ArrayList<Integer> W_EDGE = new ArrayList<>();
+    public ArrayList<Move> validMoves;
+    public final int [] index = {1,7,8,9};
     
     private final int MAX_DEPTH = 4;
     private Board boardToEvaluate;
@@ -37,47 +33,152 @@ public class Board {
         if (this.color == 1) {
             myBB |= 1l<<28 | 1l<<35;
             opponentBB |= 1l<<27 | 1l<<36;
+            
         } else {
             myBB |= 1l<<27 | 1l<<36;
             opponentBB |= 1l<<28 | 1l<<35;
         }
         validMoves = new ArrayList<>();
-        N_EDGE.addAll(Arrays.asList(0,1,2,3,4,5,6,7));
-        E_EDGE.addAll(Arrays.asList(7,15,23,31,39,47,55,63));
-        S_EDGE.addAll(Arrays.asList(56,57,58,59,60,61,62,63));
-        W_EDGE.addAll(Arrays.asList(0,8,16,24,32,40,48,56));
-        move = new Move();
     }
     
     public Board (Board oldBoard) {
         boardToEvaluate = oldBoard;
     }
     
-    public boolean isOver() {
-        checkValidMoves(1);
-        if (validMoves.isEmpty()) {
-            checkValidMoves(-1);
+    public boolean isOver(int me) {
+        if(me==-1) {
+            return false;
+        } else {
+            checkValidMoves(1);
             if (validMoves.isEmpty()) {
-                return true;
+                checkValidMoves(-1);
+                if (validMoves.isEmpty()) {
+                    return true;
+                }
             }
         }
         return false;
     }
     
-    private void applyMove(ArrayList<Integer> toToggle, int me) {
-        if (me==1)
-            myBB ^= 1l<<toToggle.get(0);
-        else
-            opponentBB ^= 1l<<toToggle.get(0);
-        for (int i=1;i<toToggle.size();i++) {
-            myBB ^= 1l<<toToggle.get(i);
-            opponentBB ^= 1l<<toToggle.get(i);
+    public void applyMove(int player, Move valid) {
+        if(player==1) myBB ^= 1l<<valid.bitIndex;
+        else opponentBB ^= 1l<<valid.bitIndex;
+        myBB ^= valid.toggle;
+        opponentBB ^= valid.toggle;
+    }
+    
+    public void checkValidMoves(int player) {
+        validMoves.clear();
+        Long empty = ~(myBB | opponentBB);
+        Long me, opp;
+        if(player == 1) {
+            me = myBB;
+            opp = opponentBB;
+        } else {
+            me = opponentBB;
+            opp = myBB;
+        }
+        Long totalMoves = 0l;
+        
+        for (int i=0;i<4;i++) {
+            
+            Long t = opp & (me << index[i]);
+            t |= opp & (t << index[i]);
+            t |= opp & (t << index[i]);
+            t |= opp & (t << index[i]);
+            t |= opp & (t << index[i]);
+            t |= opp & (t << index[i]);
+            totalMoves |= (empty & (t << index[i]));
+        }
+        for(int i=0;i<4;i++) {
+            Long t = opp & (me >> index[i]);
+            t |= opp & (t >> index[i]);
+            t |= opp & (t >> index[i]);
+            t |= opp & (t >> index[i]);
+            t |= opp & (t >> index[i]);
+            t |= opp & (t >> index[i]);
+            totalMoves |= (empty & (t >> index[i]));
+        }
+        
+        Move valid;
+        Long toToggle=0l;
+        for (int bit=0;bit<64;bit++) {
+            if(((totalMoves>>>bit)&1)==1) {
+                toToggle = toToggle(bit,player);
+                valid = new Move(bit, toToggle);
+                validMoves.add(valid);
+                //System.out.println(bit);
+            }
+        }
+        
+        Collections.shuffle(validMoves);
+    }
+    
+    public Long toToggle(int bit, int player) {
+        Long me, opp;
+        if(player == 1) {
+            me = myBB;
+            opp = opponentBB;
+        } else {
+            me = opponentBB;
+            opp = myBB;
+        }
+        Long bitBB = 1l<<bit;
+        Long toToggle = 0l;
+        for (int i=0;i<4;i++) {
+            Long t = opp & (bitBB << index[i]);
+            t |= opp & (t << index[i]);
+            t |= opp & (t << index[i]);
+            t |= opp & (t << index[i]);
+            t |= opp & (t << index[i]);
+            t |= opp & (t << index[i]);
+           
+            if(Long.bitCount(me&t<<index[i])>0) {
+                toToggle|= t;
+            }
+        }
+        for(int i=0;i<4;i++) {
+            Long t = opp & (bitBB >> index[i]);
+            t |= opp & (t >> index[i]);
+            t |= opp & (t >> index[i]);
+            t |= opp & (t >> index[i]);
+            t |= opp & (t >> index[i]);
+            t |= opp & (t >> index[i]);
+            if(Long.bitCount(me&t>>index[i])>0) {
+                toToggle|= t;
+            }
+        }
+        //toToggle|=bitBB;
+        return toToggle;
+    }
+    public String generateMove(int player) {
+        checkValidMoves(1);
+        if (validMoves.isEmpty()) {
+            if (color == 1) return "B";
+            else return "W";
+        } else {
+            applyMove(player,validMoves.get(0));
+
+            String printMove = "";
+            if(color == 1){
+                printMove += ("B ");
+                printMove += (validMoves.get(0).toString());
+                return printMove;
+            } else {
+                printMove += ("W ");
+                printMove += (validMoves.get(0).toString());
+                return printMove;
+            }
         }
     }
     
     public String getMove(int me) {
         checkValidMoves(-1);
-        ArrayList<Integer> moveSelected = validMoves.get(0);
+        Move attempt = new Move();
+        Move check = new Move();
+        if(validMoves.isEmpty()) {
+            
+        } else check = validMoves.get(0);
         System.out.println("C Enter move: ");
         String moveString = keyboard.nextLine();
         boolean valid = true;
@@ -85,11 +186,11 @@ public class Board {
             if (moveString.equals("W") || moveString.equals("B")) {
                 return moveString;
             }
-            int bit = move.moveToBit(moveString);
+            else attempt = new Move(moveString);
             int i;
-            for(i=1;i<validMoves.size();i++) {
-                if ((Integer)validMoves.get(i).get(0) == bit) {
-                    moveSelected = validMoves.get(i);
+            for(i=0;i<validMoves.size();i++) {
+                if (attempt.bitIndex == validMoves.get(i).bitIndex) {
+                    check = validMoves.get(i);
                     break;
                 }
             }
@@ -100,32 +201,25 @@ public class Board {
             } else
                 break;
         }
-        applyMove(moveSelected,-1);
+        applyMove(-1,check);
         return moveString;
     }    
     
-    public String generateMove(int me) {
-        checkValidMoves(1);
-        if (validMoves.isEmpty()) {
-            if (color == 1) return "B";
-            else return "W";
-        } else {
-            ArrayList <Integer> largest = validMoves.get(0);
-            applyMove(largest,1);
-
-            String printMove = "";
-            int bit = largest.get(0);
-            if(color == 1){
-                printMove = printMove.concat("B ");
-                printMove = printMove.concat(move.bitToMove(bit));
-                return printMove;
-            } else {
-                printMove = printMove.concat("W ");
-                printMove = printMove.concat(move.bitToMove(bit));
-                return printMove;
-            }
+    
+    /*private void applyMove(ArrayList<Integer> toToggle, int me) {
+        if (me==1)
+            myBB ^= 1l<<toToggle.get(0);
+        else
+            opponentBB ^= 1l<<toToggle.get(0);
+        for (int i=1;i<toToggle.size();i++) {
+            myBB ^= 1l<<toToggle.get(i);
+            opponentBB ^= 1l<<toToggle.get(i);
         }
     }
+    
+    
+    
+    
     
     public String generateGreedy(int me) {
         checkValidMoves(1);
@@ -495,7 +589,7 @@ public class Board {
             }
         }
         return toToggle;
-    }
+    }*/
     
     
     @Override

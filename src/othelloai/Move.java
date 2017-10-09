@@ -8,7 +8,28 @@ import java.util.Scanner;
  */
 public class Move {
     
-    public int moveToBit(String move) {
+    public String moveString;
+    public int bitIndex;
+    public Long toggle;
+
+    public Move () {
+        
+    }
+    /**
+     *
+     * @param moveString
+     */
+    public Move(String moveString) {
+        this.moveString = moveString;
+        moveToBit(moveString);
+    }
+    
+    public Move(int valid, Long toToggle) {
+        bitIndex = valid;
+        toggle = toToggle;
+    }
+    
+    public void moveToBit(String move) {
         Scanner readMove = new Scanner(move);
         int bit;
         String color = readMove.next();
@@ -25,18 +46,19 @@ public class Move {
             case 7 : bit+=48; break;
             case 8 : bit+=56; break;
         }
-        return bit;
+        bitIndex = bit;
     }
     
-    public String bitToMove(int bit) {
+    @Override
+    public String toString(){
         int count = 0;
         String move;
-        while(bit>=8) {
-            bit -= 8;
+        while(bitIndex>=8) {
+            bitIndex -= 8;
             count++;
         }
-        move = Character.toString(Character.toChars(bit+97)[0]);
-        move = move.concat(" " + Integer.toString(count+1));
+        move = Character.toString(Character.toChars(bitIndex+97)[0]);
+        move += (" " + Integer.toString(count+1));
         
         return move;
     }
