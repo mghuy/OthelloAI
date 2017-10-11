@@ -21,6 +21,11 @@ public class Board {
     public Random rand;
     public ArrayList<Move> validMoves;
     public final int [] index = {1,7,8,9};
+    public final Long [] overflow = {0x007F7F7F7F7F7F7Fl,0x00FEFEFEFEFEFEFEl,
+        0x00FFFFFFFFFFFFFFl,0x007F7F7F7F7F7F7Fl,0xFEFEFEFEFEFEFEFEl,
+        0x7F7F7F7F7F7F7F7Fl,0xFFFFFFFFFFFFFF00l,0xFEFEFEFEFEFEFE00l};
+    //right, downLeft, down, downRight, left, upRight, up, upLeft
+    public long bbDown = 0x00FFFFFFFFFFFFFFl;
     
     private final int MAX_DEPTH = 4;
     private Board boardToEvaluate;
@@ -79,25 +84,29 @@ public class Board {
             opp = myBB;
         }
         Long totalMoves = 0l;
-        
+        Long temp = 0l;
+        int j=0;
         for (int i=0;i<4;i++) {
-            
-            Long t = opp & (me << index[i]);
-            t |= opp & (t << index[i]);
-            t |= opp & (t << index[i]);
-            t |= opp & (t << index[i]);
-            t |= opp & (t << index[i]);
-            t |= opp & (t << index[i]);
+            temp = opp & overflow[j];
+            Long t = temp & (me << index[i]);
+            t |= temp & (t << index[i]);
+            t |= temp & (t << index[i]);
+            t |= temp & (t << index[i]);
+            t |= temp & (t << index[i]);
+            t |= temp & (t << index[i]);
             totalMoves |= (empty & (t << index[i]));
+            j++;
         }
         for(int i=0;i<4;i++) {
-            Long t = opp & (me >> index[i]);
-            t |= opp & (t >> index[i]);
-            t |= opp & (t >> index[i]);
-            t |= opp & (t >> index[i]);
-            t |= opp & (t >> index[i]);
-            t |= opp & (t >> index[i]);
+            temp = opp & overflow[j];
+            Long t = temp & (me >> index[i]);
+            t |= temp & (t >> index[i]);
+            t |= temp & (t >> index[i]);
+            t |= temp & (t >> index[i]);
+            t |= temp & (t >> index[i]);
+            t |= temp & (t >> index[i]);
             totalMoves |= (empty & (t >> index[i]));
+            j++;
         }
         
         Move valid;
@@ -125,28 +134,33 @@ public class Board {
         }
         Long bitBB = 1l<<bit;
         Long toToggle = 0l;
+        Long temp = 0l;
+        int j = 0;
         for (int i=0;i<4;i++) {
-            Long t = opp & (bitBB << index[i]);
-            t |= opp & (t << index[i]);
-            t |= opp & (t << index[i]);
-            t |= opp & (t << index[i]);
-            t |= opp & (t << index[i]);
-            t |= opp & (t << index[i]);
-           
+            temp = opp & overflow[j];
+            Long t = temp & (bitBB << index[i]);
+            t |= temp & (t << index[i]);
+            t |= temp & (t << index[i]);
+            t |= temp & (t << index[i]);
+            t |= temp & (t << index[i]);
+            t |= temp & (t << index[i]);
             if(Long.bitCount(me&t<<index[i])>0) {
                 toToggle|= t;
             }
+            j++;
         }
         for(int i=0;i<4;i++) {
-            Long t = opp & (bitBB >> index[i]);
-            t |= opp & (t >> index[i]);
-            t |= opp & (t >> index[i]);
-            t |= opp & (t >> index[i]);
-            t |= opp & (t >> index[i]);
-            t |= opp & (t >> index[i]);
+            temp = opp & overflow[j];
+            Long t = temp & (bitBB >> index[i]);
+            t |= temp & (t >> index[i]);
+            t |= temp & (t >> index[i]);
+            t |= temp & (t >> index[i]);
+            t |= temp & (t >> index[i]);
+            t |= temp & (t >> index[i]);
             if(Long.bitCount(me&t>>index[i])>0) {
                 toToggle|= t;
             }
+            j++;
         }
         //toToggle|=bitBB;
         return toToggle;
