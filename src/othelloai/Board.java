@@ -15,23 +15,40 @@ public class Board {
     public Long opponentBB;
     public Long occupiedBB;
     public Move move;
+    public int moveNumber;
     public int color; //1 == I B and -1 == I W
     public Boolean isOver;
-    public Scanner keyboard;
-    public Random rand;
     public ArrayList<Move> validMoves;
     public final int [] index = {1,7,8,9};
-    public final Long [] overflow = {0x007F7F7F7F7F7F7Fl,0x00FEFEFEFEFEFEFEl,
-        0x00FFFFFFFFFFFFFFl,0x007F7F7F7F7F7F7Fl,0xFEFEFEFEFEFEFEFEl,
-        0x7F7F7F7F7F7F7F7Fl,0xFFFFFFFFFFFFFF00l,0xFEFEFEFEFEFEFE00l};
-    //right, downLeft, down, downRight, left, upRight, up, upLeft
-    public long bbDown = 0x00FFFFFFFFFFFFFFl;
+    public final Long [] overflow = {
+        0xFEFEFEFEFEFEFEFEl, //right
+        0x7F7F7F7F7F7F7F00l, //downLeft
+        0xFFFFFFFFFFFFFF00l, //down
+        0xFEFEFEFEFEFEFE00l, //downRight
+        0x7F7F7F7F7F7F7F7Fl, //left
+        0x00FEFEFEFEFEFEFEl, //upRight
+        0x00FFFFFFFFFFFFFFl, //up
+        0x007F7F7F7F7F7F7Fl, //upLeft
+    };
+    public final Long [] overflow2 = {
+        0x7F7F7F7F7F7F7F7Fl,    //left
+        0xFEFEFEFEFEFEFE00l,    //downRight
+        0xFFFFFFFFFFFFFF00l,
+        0x7F7F7F7F7F7F7F00l,
+        0xFEFEFEFEFEFEFEFEl,
+        0x007F7F7F7F7F7F7Fl,
+        0x00FFFFFFFFFFFFFFl,
+        0x00FEFEFEFEFEFEFEl,
+    };
+    public Scanner keyboard;
+    public Random rand;
     
     private final int MAX_DEPTH = 4;
     private Board boardToEvaluate;
     
     public Board (int color) {
         keyboard = new Scanner(System.in);
+        moveNumber = -1;
         this.color = color;
         myBB = 0l;
         opponentBB = 0l;
@@ -51,15 +68,13 @@ public class Board {
     }
     
     public boolean isOver(int me) {
-        if(me==-1) {
-            return false;
-        } else {
+        moveNumber++;
+        if(me==-1) return false;
+        else {
             checkValidMoves(1);
             if (validMoves.isEmpty()) {
                 checkValidMoves(-1);
-                if (validMoves.isEmpty()) {
-                    return true;
-                }
+                if (validMoves.isEmpty()) return true;
             }
         }
         return false;
@@ -74,6 +89,7 @@ public class Board {
     
     public void checkValidMoves(int player) {
         validMoves.clear();
+        
         Long empty = ~(myBB | opponentBB);
         Long me, opp;
         if(player == 1) {
@@ -84,39 +100,35 @@ public class Board {
             opp = myBB;
         }
         Long totalMoves = 0l;
-        Long temp = 0l;
-        int j=0;
+        Long temp;
+        int j=0,k;
+        
         for (int i=0;i<4;i++) {
-            temp = opp & overflow[j];
-            Long t = temp & (me << index[i]);
-            t |= temp & (t << index[i]);
-            t |= temp & (t << index[i]);
-            t |= temp & (t << index[i]);
-            t |= temp & (t << index[i]);
-            t |= temp & (t << index[i]);
-            totalMoves |= (empty & (t << index[i]));
+            temp = opp & overflow[j] & overflow2[j];
+            Long t = temp & (me >>> index[i]);
+            for(k=0;k<5;k++) {
+                t |= temp & (t>>>index[i]);
+            }
+            totalMoves |= (empty & (t >>> index[i]));
             j++;
         }
         for(int i=0;i<4;i++) {
-            temp = opp & overflow[j];
-            Long t = temp & (me >> index[i]);
-            t |= temp & (t >> index[i]);
-            t |= temp & (t >> index[i]);
-            t |= temp & (t >> index[i]);
-            t |= temp & (t >> index[i]);
-            t |= temp & (t >> index[i]);
-            totalMoves |= (empty & (t >> index[i]));
+            temp = opp & overflow[j] & overflow2[j];
+            Long t = temp & (me << index[i]);
+            for(k=0;k<5;k++) {
+                t |= temp & (t << index[i]);
+            }
+            totalMoves |= (empty & (t << index[i]));
             j++;
         }
         
         Move valid;
-        Long toToggle=0l;
+        Long toToggle;
         for (int bit=0;bit<64;bit++) {
             if(((totalMoves>>>bit)&1)==1) {
                 toToggle = toToggle(bit,player);
                 valid = new Move(bit, toToggle);
                 validMoves.add(valid);
-                //System.out.println(bit);
             }
         }
         
@@ -132,39 +144,57 @@ public class Board {
             me = opponentBB;
             opp = myBB;
         }
-        Long bitBB = 1l<<bit;
+        Long bitBB = 1l<<bit; //System.out.println(Long.toBinaryString(bitBB));
         Long toToggle = 0l;
-        Long temp = 0l;
+        Long temp;
+        Long checkDir;
         int j = 0;
+        
         for (int i=0;i<4;i++) {
-            temp = opp & overflow[j];
-            Long t = temp & (bitBB << index[i]);
-            t |= temp & (t << index[i]);
-            t |= temp & (t << index[i]);
-            t |= temp & (t << index[i]);
-            t |= temp & (t << index[i]);
-            t |= temp & (t << index[i]);
-            if(Long.bitCount(me&t<<index[i])>0) {
-                toToggle|= t;
+            temp = opp & overflow[j] & overflow2[j];
+            Long t = temp & (bitBB>>>index[i]);
+            checkDir = 0l;
+            for(int k=0;k<6;k++) {
+                if (t!=0l) {
+                    checkDir |= t; 
+                    if((t>>>index[i] & me) != 0l) {
+                        toToggle |= checkDir;
+                        break;
+                    }
+                }
+                t = temp & (t>>>index[i]);
             }
             j++;
         }
         for(int i=0;i<4;i++) {
-            temp = opp & overflow[j];
-            Long t = temp & (bitBB >> index[i]);
-            t |= temp & (t >> index[i]);
-            t |= temp & (t >> index[i]);
-            t |= temp & (t >> index[i]);
-            t |= temp & (t >> index[i]);
-            t |= temp & (t >> index[i]);
-            if(Long.bitCount(me&t>>index[i])>0) {
-                toToggle|= t;
+            temp = opp & overflow[j] & overflow2[j];
+            //bitBB &= overflow[j];
+            Long t = temp & (bitBB << index[i]);
+            checkDir = 0l;
+            for(int k=0;k<6;k++) {
+                //System.out.println("Found enemy");
+                if(t!=0l) {
+                    checkDir |= t;
+                    if((t<<index[i]&me)!=0l) {
+                        toToggle|=checkDir;
+                        break;
+                    }
+                }
+                t = temp & (t << index[i]);
             }
             j++;
         }
-        //toToggle|=bitBB;
+        
+        /*System.out.print("C " + bit + " : [ ");
+        for(int i=0;i<64;i++) {
+            if(((toToggle>>>i)&1)==1) {
+                System.out.print(i + ", ");
+            }
+        }
+        System.out.println("]");*/
         return toToggle;
     }
+    
     public String generateMove(int player) {
         checkValidMoves(1);
         if (validMoves.isEmpty()) {
@@ -188,11 +218,10 @@ public class Board {
     
     public String getMove(int me) {
         checkValidMoves(-1);
-        Move attempt = new Move();
+        Move attempt;
         Move check = new Move();
-        if(validMoves.isEmpty()) {
-            
-        } else check = validMoves.get(0);
+        if(!validMoves.isEmpty()) 
+            check = validMoves.get(0);
         System.out.println("C Enter move: ");
         String moveString = keyboard.nextLine();
         boolean valid = true;
@@ -204,407 +233,19 @@ public class Board {
             int i;
             for(i=0;i<validMoves.size();i++) {
                 if (attempt.bitIndex == validMoves.get(i).bitIndex) {
-                    check = validMoves.get(i);
-                    break;
+                    check = validMoves.get(i); break;
                 }
             }
-            if(i==validMoves.size()) {
+            if(i == validMoves.size()) {
                 System.out.println("C Invalid Move.");
                 System.out.println("C Enter move: ");
                 moveString = keyboard.nextLine();
             } else
-                break;
+                valid = false;
         }
         applyMove(-1,check);
         return moveString;
     }    
-    
-    
-    /*private void applyMove(ArrayList<Integer> toToggle, int me) {
-        if (me==1)
-            myBB ^= 1l<<toToggle.get(0);
-        else
-            opponentBB ^= 1l<<toToggle.get(0);
-        for (int i=1;i<toToggle.size();i++) {
-            myBB ^= 1l<<toToggle.get(i);
-            opponentBB ^= 1l<<toToggle.get(i);
-        }
-    }
-    
-    
-    
-    
-    
-    public String generateGreedy(int me) {
-        checkValidMoves(1);
-        if (validMoves.isEmpty()) {
-            if (color == 1) return "B";
-            else return "W";
-        } else {
-            ArrayList <Integer> largest = validMoves.get(0);
-            int temp = validMoves.get(0).size();
-            for(int i=1;i<validMoves.size();i++) {
-                if (temp < validMoves.get(i).size())
-                    largest = validMoves.get(i);
-            }
-            applyMove(largest,1);
-
-            String printMove = "";
-            int bit = largest.get(0);
-            if(color == 1){
-                printMove = printMove.concat("B ");
-                printMove = printMove.concat(move.bitToMove(bit));
-                return printMove;
-            } else {
-                printMove = printMove.concat("W ");
-                printMove = printMove.concat(move.bitToMove(bit));
-                return printMove;
-            }
-        }
-    }
-    
-    private void checkValidMoves(int me) {
-        validMoves.clear();
-        occupiedBB = myBB | opponentBB;
-        int bit;
-        for(bit=0;bit<64;bit++) {
-            if (me==1) {
-                if(((occupiedBB>>>bit)&1)==0) {
-                    findNearestNeighbor(me,bit);
-                }
-            } else {
-                if(((occupiedBB>>>bit)&1)==0) {
-                    findNearestNeighbor(me,bit);
-                }
-            }
-        }
-        Collections.shuffle(validMoves);
-    }
-    
-    private void findNearestNeighbor(int me, int bit) {
-        ArrayList<Integer> toToggle = new ArrayList<>();
-        toToggle.add(bit);
-        if(me==1) {
-            if (N_EDGE.indexOf(bit)==-1) 
-                if(((opponentBB>>>(bit-8))&1) !=0) 
-                    toToggle = north(toToggle,me,bit);
-            if (N_EDGE.indexOf(bit)==-1 && E_EDGE.indexOf(bit)==-1) 
-                if(((opponentBB>>>(bit-7))&1) !=0) 
-                    toToggle = northEast(toToggle,me,bit);
-            if (E_EDGE.indexOf(bit)==-1) 
-                if(((opponentBB>>>(bit+1))&1) !=0) 
-                    toToggle = east(toToggle,me,bit);
-            if (S_EDGE.indexOf(bit)==-1 && E_EDGE.indexOf(bit)==-1) 
-                if(((opponentBB>>>(bit+9))&1) !=0) 
-                    toToggle = southEast(toToggle,me,bit);
-            if (S_EDGE.indexOf(bit)==-1) 
-                if(((opponentBB>>>(bit+8))&1) !=0) 
-                    toToggle = south(toToggle,me,bit);
-            if (S_EDGE.indexOf(bit)==-1 && W_EDGE.indexOf(bit)==-1) 
-                if(((opponentBB>>>(bit+7))&1) !=0) 
-                    toToggle = southWest(toToggle,me,bit);
-            if (W_EDGE.indexOf(bit)==-1) 
-                if(((opponentBB>>>(bit-1))&1) !=0) 
-                    toToggle = west(toToggle,me,bit);
-            if (N_EDGE.indexOf(bit)==-1 && W_EDGE.indexOf(bit)==-1) 
-                if(((opponentBB>>>(bit-9))&1) !=0) 
-                    toToggle = northWest(toToggle,me,bit);
-        } else {
-            if (N_EDGE.indexOf(bit)==-1) 
-                if(((myBB>>>(bit-8))&1) !=0) 
-                    toToggle = north(toToggle,me,bit);
-            if (N_EDGE.indexOf(bit)==-1 && E_EDGE.indexOf(bit)==-1) 
-                if(((myBB>>>(bit-7))&1) !=0) 
-                    toToggle = northEast(toToggle,me,bit);
-            if (E_EDGE.indexOf(bit)==-1) 
-                if(((myBB>>>(bit+1))&1) !=0) 
-                    toToggle = east(toToggle,me,bit);
-            if (S_EDGE.indexOf(bit)==-1 && E_EDGE.indexOf(bit)==-1) 
-                if(((myBB>>>(bit+9))&1) !=0) 
-                    toToggle = southEast(toToggle,me,bit);
-            if (S_EDGE.indexOf(bit)==-1) 
-                if(((myBB>>>(bit+8))&1) !=0) 
-                    toToggle = south(toToggle,me,bit);
-            if (S_EDGE.indexOf(bit)==-1 && W_EDGE.indexOf(bit)==-1) 
-                if(((myBB>>>(bit+7))&1) !=0) 
-                    toToggle = southWest(toToggle,me,bit);
-            if (W_EDGE.indexOf(bit)==-1) 
-                if(((myBB>>>(bit-1))&1) !=0) 
-                    toToggle = west(toToggle,me,bit);
-            if (N_EDGE.indexOf(bit)==-1 && W_EDGE.indexOf(bit)==-1) 
-                if(((myBB>>>(bit-9))&1) !=0) 
-                    toToggle = northWest(toToggle,me,bit);
-        }
-        if(toToggle.size()!= 1) {
-            validMoves.add(toToggle);
-        }
-    }
-    
-    private ArrayList<Integer> north(ArrayList<Integer> toToggle, int player, int bit) {
-        int count=0;
-        if (player==1) {
-            bit -= 8;
-            while(!N_EDGE.contains(bit)) {
-                if (((opponentBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit -= 8;
-            }
-            if(((myBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        else {
-            bit -= 8;
-            while(!N_EDGE.contains(bit)) {
-                if (((myBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit -= 8;
-            }
-            if(((opponentBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        return toToggle;
-    }
-    
-    private ArrayList<Integer> northEast(ArrayList<Integer> toToggle, int player, int bit) {
-        int count = 0;
-        if (player==1) {
-            bit -= 7;
-            while(!N_EDGE.contains(bit) && !E_EDGE.contains(bit)) {
-                if (((opponentBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit -= 7;
-            }
-            if(((myBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        if (player == -1) {
-            bit -= 7;
-            while(!N_EDGE.contains(bit) && !E_EDGE.contains(bit)) {
-                if (((myBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit -= 7;
-            }
-            if(((opponentBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        return toToggle;
-    }
-    
-    private ArrayList<Integer> east(ArrayList<Integer> toToggle, int player, int bit) {
-        int count = 0;
-        if (player==1) {
-            bit++;
-            while(!E_EDGE.contains(bit)) {
-                if (((opponentBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit++;
-            }
-            if(((myBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        if (player == -1) {
-            bit++;
-            while(!E_EDGE.contains(bit)) {
-                if (((opponentBB>>>bit)&1)!=0) break;
-                if (((myBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit++;
-            }
-            if(((opponentBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        return toToggle;
-    }
-    
-    private ArrayList<Integer> southEast(ArrayList<Integer> toToggle, int player, int bit) {
-        int count = 0;
-        if (player==1) {
-            bit += 9;
-            while(!S_EDGE.contains(bit) && !E_EDGE.contains(bit)) {
-                if (((opponentBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit += 9;
-            }
-            if(((myBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        if (player == -1) {
-            bit += 9;
-            while(!S_EDGE.contains(bit) && !E_EDGE.contains(bit)) {
-                if (((myBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit += 9;
-            }
-            if(((opponentBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        return toToggle;
-    }
-    
-    private ArrayList<Integer> south(ArrayList<Integer> toToggle, int player, int bit) {
-        int count = 0;
-        if (player==1) {
-            bit += 8;
-            while(!S_EDGE.contains(bit)) {
-                if (((opponentBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit += 8;
-            }
-            if(((myBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        if (player == -1) {
-            bit += 8;
-            while(!S_EDGE.contains(bit)) {
-                if (((myBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit += 8;
-            }
-            if(((opponentBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        return toToggle;
-    }
-    
-    private ArrayList<Integer> southWest(ArrayList<Integer> toToggle, int player, int bit) {
-        int count = 0;
-        if (player==1) {
-            bit += 7;
-            while(!S_EDGE.contains(bit) && !W_EDGE.contains(bit)) {
-                if (((opponentBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit += 7;
-            }
-            if(((myBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        if (player == -1) {
-            bit += 7;
-            while(!S_EDGE.contains(bit) && !W_EDGE.contains(bit)) {
-                if (((myBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit += 7;
-            }
-            if(((opponentBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        return toToggle;
-    }
-    
-    private ArrayList<Integer> west(ArrayList<Integer> toToggle, int player, int bit) {
-        int count = 0;
-        if (player==1) {
-            bit--;
-            while(!W_EDGE.contains(bit)) {
-                if (((opponentBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit--;
-            }
-            if(((myBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        if (player == -1) {
-            bit--;
-            while(!W_EDGE.contains(bit)) {
-                if (((myBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit--;
-            }
-            if(((opponentBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        return toToggle;
-    }
-    
-    private ArrayList<Integer> northWest(ArrayList<Integer> toToggle, int player, int bit) {
-        int count = 0;
-        if (player==1) {
-            bit -= 9;
-            while(!N_EDGE.contains(bit) && !W_EDGE.contains(bit)) {
-                if (((opponentBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit -= 9;
-            }
-            if(((myBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        if (player == -1) {
-            bit -= 9;
-            while(!S_EDGE.contains(bit) && !W_EDGE.contains(bit)) {
-                if (((myBB>>>bit)&1)!=0) {
-                    toToggle.add(bit);
-                    count++;
-                }
-                else break;
-                bit -= 9;
-            }
-            if(((opponentBB>>>bit)&1)!=1 && toToggle.size()>1) {
-                toToggle.subList(toToggle.size()-count,toToggle.size()).clear();
-            }
-        }
-        return toToggle;
-    }*/
-    
     
     @Override
     public String toString() {
@@ -612,52 +253,52 @@ public class Board {
         int bit = 0;
         String board = "C ";
         for (i=0;i<16;i++) {
-            board = board.concat("**");
+            board += ("**");
         }
-        board = board.concat("\nC     ");
+        board += ("\nC     ");
         
         for (char ch='a';ch<='h';ch++) {
-            board = board.concat("|" + ch + "|");
-        } board = board.concat("\nC     ");
+            board += ("|" + ch + "|");
+        } board += ("\nC     ");
         for (i=0;i<12;i++) {
-            board = board.concat("==");
-        } board = board.concat("\n");
+            board += ("==");
+        } board += ("\n");
         for (i=1;i<=8;i++) {
-            board = board.concat("C |"+i+"| ");
+            board += ("C |" + i + "| ");
             for (int j=1;j<=8;j++) {
-                if(color==1) {
-                    if (((myBB >>> bit) & 1) != 0) {
-                        board = board.concat(" B ");
-                    } else if (((opponentBB >>> bit) & 1) != 0) {
-                        board = board.concat(" W ");
+                if(color == 1) {
+                    if (((myBB>>>bit) & 1) != 0) {
+                        board += (" B ");
+                    } else if (((opponentBB>>>bit) & 1) != 0) {
+                        board += (" W ");
                     } else
-                        board = board.concat(" - ");
+                        board += (" - ");
                 } else {
-                    if (((myBB >>> bit) & 1) != 0) {
-                        board = board.concat(" W ");
-                    } else if (((opponentBB >>> bit) & 1) != 0) {
-                        board = board.concat(" B ");
+                    if (((myBB>>>bit) & 1) != 0) {
+                        board += (" W ");
+                    } else if (((opponentBB>>>bit) & 1) != 0) {
+                        board += (" B ");
                     } else
-                        board = board.concat(" - ");
+                        board += (" - ");
                 }
                 bit++;
             }
-            board = board.concat("\n");
-        } board = board.concat("C     ");
+            board += ("\n");
+        } board += ("C     ");
         for (i=0;i<12;i++) {
-            board = board.concat("==");
+            board += ("==");
         }  board += "\n";
         if (color==1) {
-            board = board.concat("C     Black: " + Integer.toString(Long.bitCount(myBB)) + " ---- ");
-            board = board.concat("White: " + Integer.toString(Long.bitCount(opponentBB)));
+            board += ("C     Black: " + Integer.toString(Long.bitCount(myBB)) + " ---- ");
+            board += ("White: " + Integer.toString(Long.bitCount(opponentBB)));
         } else {
-            board = board.concat("C     Black: " + Integer.toString(Long.bitCount(opponentBB)) + " ---- ");
-            board = board.concat("White: " + Integer.toString(Long.bitCount(myBB)));
+            board += ("C     Black: " + Integer.toString(Long.bitCount(opponentBB)) + " ---- ");
+            board += ("White: " + Integer.toString(Long.bitCount(myBB)));
            
-        } board = board.concat("\nC ");
+        } board += ("\nC ");
         for (i=0;i<16;i++) {
             board = board.concat("**");
-        } board += "\nC";
+        } 
         
         
         return board;
