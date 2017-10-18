@@ -11,6 +11,7 @@ public class Move {
     public String moveString;
     public int bitIndex;
     public Long toggle;
+    public Double value;
 
     public Move () {
         

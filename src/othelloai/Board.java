@@ -216,6 +216,16 @@ public class Board {
         }
     }
     
+    /*public String getMove(int player) {
+        checkValidMoves(1);
+        if(moveNumber == 0) {   //if black & 1stMove, make a rand of four selection
+            applyMove(player,validMoves.get(0));
+        }
+        double alpha = Double.MIN_VALUE;
+        double beta = Double.MAX_VALUE;
+        return
+    }*/
+    
     public String getMove(int me) {
         checkValidMoves(-1);
         Move attempt;
